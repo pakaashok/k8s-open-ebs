@@ -1,0 +1,122 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openebs-localpv-provisioner
+  namespace: openebs
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openebs-localpv-provisioner
+rules:
+  # Node access
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  
+  # Namespace and Pod access (IMPORTANT - was missing create/delete for pods!)
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  
+  # Persistent Volume access
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch", "update"]
+  
+  # Persistent Volume Claim access
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  
+  # Storage Class access
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  
+  # CSI Nodes
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  
+  # Events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "update", "patch", "list", "get"]
+  
+  # Endpoints (for leader election)
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  
+  # Leases (for leader election)
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  
+  # ConfigMaps
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openebs-localpv-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: openebs-localpv-provisioner
+    namespace: openebs
+roleRef:
+  kind: ClusterRole
+  name: openebs-localpv-provisioner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Role for namespace-specific permissions (openebs namespace)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openebs-localpv-provisioner
+  namespace: openebs
+rules:
+  # Pods - needed to create helper pods for volume setup
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  
+  # Endpoints (leader election)
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  
+  # ConfigMaps
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  
+  # Leases (leader election)
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openebs-localpv-provisioner
+  namespace: openebs
+subjects:
+  - kind: ServiceAccount
+    name: openebs-localpv-provisioner
+    namespace: openebs
+roleRef:
+  kind: Role
+  name: openebs-localpv-provisioner
+  apiGroup: rbac.authorization.k8s.io
